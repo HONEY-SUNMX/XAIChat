@@ -1,0 +1,61 @@
+# Qwen3 Chat - llama-cpp-python version
+# For CPU inference on systems without NVIDIA GPU
+
+# Core dependency - llama.cpp Python bindings
+llama-cpp-python>=0.3.0
+
+# For downloading models from Hugging Face
+huggingface-hub>=0.20.0
+
+# Optional: for colored terminal output
+colorama>=0.4.6
+
+# ============================================
+# Text-to-Image Generation (CPU optimized)
+# ============================================
+
+# Diffusion models framework
+diffusers>=0.25.0
+
+# Model loading and tokenization
+transformers>=4.36.0
+
+# Inference optimization
+accelerate>=0.25.0
+
+# Safe model file format
+safetensors>=0.4.0
+
+# Image processing
+pillow>=10.0.0
+
+# PyTorch (CPU version)
+# Note: For CPU-only systems, you may want to install the CPU-only version:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+
+# ============================================
+# Vision (Image Understanding) - Qwen2-VL
+# ============================================
+
+# Qwen-VL utilities for image processing
+qwen-vl-utils>=0.0.2
+
+# TorchVision for image preprocessing (required by qwen-vl-utils)
+torchvision>=0.15.0
+
+# ============================================
+# Web API Server (FastAPI)
+# ============================================
+
+# FastAPI web framework
+fastapi>=0.109.0
+
+# ASGI server
+uvicorn[standard]>=0.27.0
+
+# File upload support
+python-multipart>=0.0.6
+
+# Settings management
+pydantic-settings>=2.0.0

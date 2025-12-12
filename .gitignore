@@ -1,0 +1,9 @@
+/.env
+__pycache__
+/outputs
+/uploads
+/models/*
+!/models/.gitkeep
+node_modules/
+/web/node_modules/
+/web/node_modules/.vite/
