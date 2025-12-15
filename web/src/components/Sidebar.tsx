@@ -1,4 +1,4 @@
-import { MessageSquare, Eye, Image } from 'lucide-react'
+import { MessageSquare, Eye, Image, Sparkles } from 'lucide-react'
 import type { Tab } from '../App'
 
 interface SidebarProps {
@@ -7,6 +7,7 @@ interface SidebarProps {
 }
 
 const tabs = [
+  { id: 'multimodal' as Tab, icon: Sparkles, label: '多模态聊天', badge: 'NEW' },
   { id: 'chat' as Tab, icon: MessageSquare, label: '文字聊天' },
   { id: 'vision' as Tab, icon: Eye, label: '图片理解' },
   { id: 'image' as Tab, icon: Image, label: '图片生成' },
@@ -19,9 +20,9 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       <div className="p-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <span className="text-2xl">🤖</span>
-          Qwen Chat
+          XAI Chat
         </h1>
-        <p className="text-xs text-gray-500 mt-1">AI 助手 - 文字 / 视觉 / 生成</p>
+        <p className="text-xs text-gray-500 mt-1">多模态 AI 助手</p>
       </div>
 
       {/* Navigation */}
@@ -39,15 +40,20 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                     w-full flex items-center gap-3 px-4 py-3 rounded-lg
                     transition-all duration-200
                     ${isActive
-                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      ? 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 font-medium'
                       : 'text-gray-600 hover:bg-gray-100'
                     }
                   `}
                 >
                   <Icon
-                    className={`w-5 h-5 ${isActive ? 'text-primary-600' : 'text-gray-400'}`}
+                    className={`w-5 h-5 ${isActive ? 'text-purple-600' : 'text-gray-400'}`}
                   />
-                  {tab.label}
+                  <span className="flex-1 text-left">{tab.label}</span>
+                  {tab.badge && (
+                    <span className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               </li>
             )

@@ -152,6 +152,7 @@ class ImageService:
             # Progress tracking
             current_step = 0
             first_step_time = None
+            preview_images = {}  # Store preview images
 
             def progress_callback(step, total, latents):
                 nonlocal current_step, first_step_time
@@ -165,6 +166,31 @@ class ImageService:
                 if step % 2 == 0 or step == total:
                     elapsed = time.time() - start_time
                     logger.info(f"   📊 Progress: step {step}/{total}, {elapsed:.1f}s elapsed")
+                
+                # Decode latents to preview image
+                if latents is not None and step > 0:
+                    try:
+                        import torch
+                        import base64
+                        from io import BytesIO
+                        from PIL import Image
+                        
+                        # Decode latents to image
+                        with torch.no_grad():
+                            latents_scaled = 1 / 0.18215 * latents
+                            image = generator._pipeline.vae.decode(latents_scaled).sample
+                            image = (image / 2 + 0.5).clamp(0, 1)
+                            image = image.cpu().permute(0, 2, 3, 1).numpy()
+                            image = (image[0] * 255).round().astype("uint8")
+                            pil_image = Image.fromarray(image)
+                            
+                            # Convert to base64
+                            buffered = BytesIO()
+                            pil_image.save(buffered, format="JPEG", quality=60)
+                            img_str = base64.b64encode(buffered.getvalue()).decode()
+                            preview_images[step] = f"data:image/jpeg;base64,{img_str}"
+                    except Exception as e:
+                        logger.warning(f"   Failed to generate preview for step {step}: {e}")
 
             # Start generation in a thread to not block
             import torch
@@ -192,7 +218,13 @@ class ImageService:
                 while not future.done():
                     if current_step != last_step:
                         last_step = current_step
-                        yield f"data: {json.dumps({'type': 'progress', 'step': current_step + 1, 'total': steps})}\n\n"
+                        # current_step is 0-based index, but in callback it's the completed step
+                        # Send current_step directly as it represents steps completed
+                        progress_data = {'type': 'progress', 'step': current_step, 'total': steps}
+                        # Add preview image if available
+                        if current_step in preview_images:
+                            progress_data['preview'] = preview_images[current_step]
+                        yield f"data: {json.dumps(progress_data)}\n\n"
                     await asyncio.sleep(0.1)
 
                 # Get result

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Trash2, Loader2, Brain } from 'lucide-react'
+import { Send, Trash2, Loader2, Brain, Bot } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import MessageBubble from './MessageBubble'
 
@@ -65,9 +65,30 @@ export default function ChatPanel() {
             <p className="text-sm mt-2">输入消息后按 Enter 发送</p>
           </div>
         ) : (
-          messages.map((msg, idx) => (
-            <MessageBubble key={idx} message={msg} />
-          ))
+          <>
+            {messages.map((msg, idx) => (
+              <MessageBubble 
+                key={`${msg.role}-${idx}-${msg.thinking ? msg.thinking.length : 'no-thinking'}`} 
+                message={msg} 
+                messageIndex={idx}
+              />
+            ))}
+            {/* Loading indicator when waiting for response */}
+            {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+              <div className="flex gap-3 items-start animate-fade-in-up">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center shadow-sm">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -101,15 +122,18 @@ export default function ChatPanel() {
           {/* Thinking mode toggle */}
           <button
             onClick={() => setEnableThinking(!enableThinking)}
-            className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all border ${
               enableThinking
-                ? 'text-primary-600 bg-primary-50 hover:bg-primary-100'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                ? 'text-primary-600 bg-primary-50 hover:bg-primary-100 border-primary-200 shadow-sm'
+                : 'text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-200'
             }`}
             title={enableThinking ? '深度思考：已开启' : '深度思考：已关闭'}
           >
-            <Brain className="w-3.5 h-3.5" />
-            深度思考
+            <Brain className={`w-3.5 h-3.5 ${enableThinking ? 'text-primary-600' : 'text-gray-500'}`} />
+            <span className="font-medium">深度思考</span>
+            {enableThinking && (
+              <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary-600 animate-pulse"></span>
+            )}
           </button>
           <p className="text-xs text-gray-400">
             CPU 模式下响应可能需要几秒钟

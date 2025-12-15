@@ -2,9 +2,11 @@
 
 基于 Qwen 系列模型的多模态 AI 对话应用，支持文本对话、图像理解（Vision）和文生图（Text-to-Image）功能。
 
-## 特性
+## ✨ 核心特性
 
-- 🤖 **多轮对话** - 自动维护对话上下文，支持思考模式展示推理过程
+- 🎨 **统一多模态聊天** - 在单个会话中无缝切换文本对话、图像分析和图片生成 ⭐ NEW
+- 🤖 **智能意图识别** - 自动检测用户需求，智能路由到相应功能
+- 💬 **多轮对话** - 自动维护对话上下文，支持思考模式展示推理过程
 - 👁️ **图像理解** - 基于 Qwen2-VL 的视觉问答能力
 - 🎨 **文生图** - 基于 LCM 的快速图像生成
 - ⚡ **流式输出** - 打字机效果实时显示
@@ -27,10 +29,15 @@ XAIChat/
 ├── server/                 # Web API 服务
 │   ├── main.py            # FastAPI 入口
 │   ├── routers/           # API 路由
+│   │   ├── multimodal.py  # 多模态聊天 API ⭐ NEW
 │   │   ├── chat.py        # 对话 API
 │   │   ├── vision.py      # 图像理解 API
 │   │   └── image.py       # 文生图 API
 │   └── services/          # 业务逻辑
+│       ├── multimodal_service.py  # 多模态服务 ⭐ NEW
+│       ├── chat_service.py
+│       ├── vision_service.py
+│       └── image_service.py
 ├── web/                    # React 前端
 ├── models/                 # 模型文件目录
 ├── start_local.sh         # CLI 启动脚本
@@ -106,6 +113,8 @@ cp .env.template .env
 
 服务启动后访问：
 - **前端界面**: http://localhost:5173
+  - 默认打开**多模态聊天**页面 ⭐ 推荐使用
+  - 也可切换到单独的文字聊天、图片理解、图片生成页面
 - **API 文档**: http://localhost:8000/docs
 - **健康检查**: http://localhost:8000/health
 
@@ -128,6 +137,22 @@ python -m cli.main --input-image ./photo.jpg
 ### 方式三：直接调用 API
 
 ```bash
+# ⭐ 多模态聊天 - 文本对话（推荐）
+curl -X POST http://localhost:8000/api/multimodal/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "你好", "stream": false, "enable_thinking": true}'
+
+# ⭐ 多模态聊天 - 图像分析
+curl -X POST http://localhost:8000/api/multimodal/chat-with-image \
+  -F "message=这是什么?" \
+  -F "file=@./image.jpg"
+
+# ⭐ 多模态聊天 - 自动生成图片（检测到关键词）
+curl -X POST http://localhost:8000/api/multimodal/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "画一只可爱的猫咪", "stream": false}'
+
+# 传统单独 API（仍然可用）
 # 对话
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
@@ -168,13 +193,30 @@ curl -X POST http://localhost:8000/api/image/generate \
 
 ## API 端点
 
+### ⭐ 多模态 API（推荐）
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/multimodal/chat` | POST | 多模态聊天 - 文本输入（支持流式，自动检测生图意图） |
+| `/api/multimodal/chat-with-image` | POST | 多模态聊天 - 文本+图片输入（支持流式） |
+| `/api/multimodal/conversation/{id}` | GET | 获取多模态会话历史 |
+| `/api/multimodal/conversation/{id}` | DELETE | 清空多模态会话 |
+
+### 传统单独 API（仍然可用）
+
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/api/chat` | POST | 文本对话（支持流式） |
 | `/api/vision/analyze` | POST | 图像理解分析 |
 | `/api/image/generate` | POST | 文生图 |
+
+### 通用端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
 | `/health` | GET | 健康检查 |
 | `/docs` | GET | Swagger API 文档 |
+| `/` | GET | API 信息和端点列表 |
 
 ## 性能优化
 
@@ -251,6 +293,54 @@ You have disabled the safety checker for <LatentConsistencyModelPipeline> by pas
   - 修改 `core/text2img.py:133`，移除 `safety_checker=None` 参数
   - 遵守 [Stable Diffusion 许可证](https://huggingface.co/spaces/CompVis/stable-diffusion-license)条款
 - 📋 用户需要对生成的内容承担责任
+
+## 🎯 多模态聊天使用示例
+
+多模态聊天支持在同一个会话中混合使用文本对话、图像分析和图片生成功能！
+
+### 场景 1：纯文本对话
+```
+你: 你好，请介绍一下你自己
+AI: 你好！我是基于 Qwen 系列模型的 AI 助手...
+```
+
+### 场景 2：图像理解
+```
+你: [上传图片 cat.jpg] 这是什么动物？
+AI: 这是一只可爱的橘猫，它看起来正在...
+```
+
+### 场景 3：自动生成图片
+```
+你: 画一只可爱的猫咪坐在草地上
+AI: 好的，本小姐正在为你绘制: 一只可爱的猫咪坐在草地上 🎨
+    [显示生成进度]
+    [显示生成的图片]
+    完成了！怎么样，本小姐的作品还不错吧~
+```
+
+### 场景 4：混合使用（同一会话）
+```
+你: 你好
+AI: 你好！有什么可以帮助你的吗？
+
+你: [上传图片] 这是什么品种的猫？
+AI: 从图片看，这是一只英国短毛猫（British Shorthair）...
+
+你: 帮我画一只类似的猫
+AI: [自动生成图片]
+    完成了！我为你生成了一只英国短毛猫的图片。
+
+你: 很棒！能再详细介绍一下这个品种吗？
+AI: 英国短毛猫是世界上最古老的猫品种之一...
+```
+
+### 🔑 关键特性
+
+- ✅ **会话连续性**：所有交互都在同一个会话中，AI 会记住上下文
+- ✅ **智能识别**：自动检测用户意图（对话/分析/生成）
+- ✅ **灵活切换**：可以随时在三种模式间切换
+- ✅ **思考模式**：可选的深度推理过程展示
 
 ## 文档
 

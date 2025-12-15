@@ -60,9 +60,9 @@ class Settings(BaseSettings):
     model_cache_dir: str = "./models/diffusion"
 
     # Streaming optimization
-    stream_batch_size: int = 10  # Send response every N tokens
-    thinking_stream_batch_size: int = 5  # Send thinking content every N tokens
-    log_progress_interval: int = 50  # Log progress every N tokens
+    stream_batch_size: int = 3  # Send response every N tokens (smaller = more responsive)
+    thinking_stream_batch_size: int = 3  # Send thinking content every N tokens (smaller = more responsive)
+    log_progress_interval: int = 100  # Log progress every N tokens (larger = less verbose)
 
     # File storage
     upload_dir: str = "./uploads"

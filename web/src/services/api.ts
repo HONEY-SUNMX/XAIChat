@@ -12,6 +12,19 @@ export interface ChatMessage {
   thinking?: string  // assistant 消息可以携带已完成的思考内容
 }
 
+export interface MultimodalMessage {
+  role: 'user' | 'assistant' | 'thinking'
+  type: 'text' | 'image_analysis' | 'generated_image'
+  content: string
+  image_url?: string
+  image_file?: File
+  thinking?: string
+  metadata?: {
+    filename?: string
+    seed?: number
+  }
+}
+
 export interface ChatStreamEvent {
   type: 'thinking' | 'thinking_stream' | 'response' | 'done' | 'error'
   content?: string
@@ -37,6 +50,18 @@ export interface ImageProgressEvent {
   image_url?: string
   filename?: string
   error?: string
+}
+
+export interface MultimodalStreamEvent {
+  type: 'thinking' | 'thinking_stream' | 'response' | 'image_generated' | 'progress' | 'done' | 'error'
+  content?: string
+  conversation_id?: string
+  image_url?: string
+  filename?: string
+  seed?: number
+  step?: number
+  total?: number
+  preview?: string  // Base64 encoded preview image for progress updates
 }
 
 /**
@@ -246,5 +271,107 @@ export async function clearConversation(conversationId: string): Promise<void> {
 
   if (!response.ok) {
     throw new Error('Failed to clear conversation')
+  }
+}
+
+/**
+ * Multimodal chat - text only
+ */
+export async function* streamMultimodalChat(
+  message: string,
+  conversationId?: string,
+  enableThinking: boolean = true
+): AsyncGenerator<MultimodalStreamEvent> {
+  const response = await fetch(`${API_BASE}/multimodal/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      conversation_id: conversationId,
+      stream: true,
+      enable_thinking: enableThinking,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Multimodal chat request failed: ${response.statusText}`)
+  }
+
+  yield* parseSSEStream<MultimodalStreamEvent>(response)
+}
+
+/**
+ * Multimodal chat - with image upload
+ */
+export async function* streamMultimodalChatWithImage(
+  message: string,
+  imageFile: File,
+  conversationId?: string,
+  enableThinking: boolean = true
+): AsyncGenerator<MultimodalStreamEvent> {
+  const formData = new FormData()
+  formData.append('message', message)
+  formData.append('file', imageFile)
+  if (conversationId) {
+    formData.append('conversation_id', conversationId)
+  }
+  formData.append('enable_thinking', enableThinking.toString())
+
+  const response = await fetch(`${API_BASE}/multimodal/chat-with-image`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Multimodal chat with image failed: ${response.statusText}`)
+  }
+
+  yield* parseSSEStream<MultimodalStreamEvent>(response)
+}
+
+/**
+ * Clear multimodal conversation history
+ */
+export async function clearMultimodalConversation(conversationId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/multimodal/conversation/${conversationId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to clear conversation')
+  }
+}
+
+/**
+ * Helper function to parse SSE stream
+ */
+async function* parseSSEStream<T>(response: Response): AsyncGenerator<T> {
+  const reader = response.body?.getReader()
+  const decoder = new TextDecoder()
+
+  if (!reader) {
+    throw new Error('No response body')
+  }
+
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6)) as T
+          yield data
+        } catch (e) {
+          console.error('Failed to parse SSE data:', e)
+        }
+      }
+    }
   }
 }

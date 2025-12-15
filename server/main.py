@@ -31,7 +31,7 @@ import logging
 
 from core.config import settings
 from core.log_listener import get_log_listener, LogLevel, LogRecord, create_log_forwarder
-from server.routers import chat, vision, image
+from server.routers import chat, vision, image, multimodal
 from server.models.schemas import HealthResponse, ErrorResponse
 
 
@@ -160,6 +160,12 @@ app.include_router(
     tags=["Image Generation"]
 )
 
+app.include_router(
+    multimodal.router,
+    prefix="/api",
+    tags=["Multimodal Chat"]
+)
+
 
 # Static file serving for generated images and uploads
 if os.path.exists(settings.output_dir):
@@ -192,6 +198,7 @@ async def root():
             "chat": "/api/chat",
             "vision": "/api/vision",
             "image": "/api/image",
+            "multimodal": "/api/multimodal",
         }
     }
 

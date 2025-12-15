@@ -71,6 +71,8 @@ export function useChat(): UseChatReturn {
 
     let assistantMessage = ''
     let thinkingContent = ''
+    let updateCounter = 0
+    const UPDATE_THROTTLE = 2  // Only update UI every N events for better performance
 
     try {
       for await (const event of streamChat(content, conversationId || undefined, enableThinking)) {
@@ -85,54 +87,55 @@ export function useChat(): UseChatReturn {
             break
 
           case 'thinking_stream':
-            // Real-time streaming of thinking content (every 5 tokens)
+            // Real-time streaming of thinking content - throttle updates
             thinkingContent += event.content || ''
-            setMessages((prev) => {
-              const filtered = prev.filter((m) => m.role !== 'thinking')
-              return [...filtered, { role: 'thinking', content: thinkingContent }]
-            })
+            updateCounter++
+            
+            // Only update every UPDATE_THROTTLE events to reduce re-renders
+            if (updateCounter % UPDATE_THROTTLE === 0) {
+              setMessages((prev) => {
+                const filtered = prev.filter((m) => m.role !== 'thinking')
+                return [...filtered, { role: 'thinking', content: thinkingContent }]
+              })
+            }
             break
 
           case 'response':
             assistantMessage += event.content || ''
-            // Update assistant message, keep thinking message until done (avoid flicker)
-            setMessages((prev) => {
-              // Find the last user message index (current turn starts after it)
-              const lastUserIndex = prev.map((m) => m.role).lastIndexOf('user')
+            updateCounter++
+            
+            // Only update every UPDATE_THROTTLE events to reduce re-renders
+            if (updateCounter % UPDATE_THROTTLE === 0) {
+              setMessages((prev) => {
+                const lastUserIndex = prev.map((m) => m.role).lastIndexOf('user')
+                const beforeCurrentTurn = prev.slice(0, lastUserIndex + 1)
+                const thinkingMsg = prev.find((m) => m.role === 'thinking')
 
-              // Keep all messages before and including the last user message
-              // Also keep thinking message to avoid flicker
-              const beforeCurrentTurn = prev.slice(0, lastUserIndex + 1)
-              const thinkingMsg = prev.find((m) => m.role === 'thinking')
+                const newMessages = [...beforeCurrentTurn]
+                if (thinkingMsg) {
+                  newMessages.push(thinkingMsg)
+                }
+                newMessages.push({ role: 'assistant', content: assistantMessage })
 
-              // Build new messages: history + thinking (if exists) + assistant response
-              const newMessages = [...beforeCurrentTurn]
-              if (thinkingMsg) {
-                newMessages.push(thinkingMsg)
-              }
-              newMessages.push({ role: 'assistant', content: assistantMessage })
-
-              return newMessages
-            })
+                return newMessages
+              })
+            }
             break
 
           case 'done':
             if (event.conversation_id) {
               setConversationId(event.conversation_id)
             }
-            // 将 thinking 内容合并到 assistant 消息，同时删除 thinking 消息
-            // 在同一次 setState 中完成，避免闪烁
+            // Final update with complete content
             setMessages((prev) => {
-              // 过滤掉 thinking 消息
               const withoutThinking = prev.filter((m) => m.role !== 'thinking')
-
-              // 找到最后一条 assistant 消息（当前轮次的回复）
               const lastIndex = withoutThinking.length - 1
+              
               if (lastIndex >= 0 && withoutThinking[lastIndex].role === 'assistant' && thinkingContent) {
-                // 创建新数组，将 thinking 内容附加到 assistant 消息
                 const result = [...withoutThinking]
                 result[lastIndex] = {
                   ...result[lastIndex],
+                  content: assistantMessage,  // Ensure final content is complete
                   thinking: thinkingContent
                 }
                 return result
